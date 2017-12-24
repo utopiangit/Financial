@@ -227,5 +227,5 @@ if __name__ == '__main__':
 #    print(interpolate.interp1d(grids, dfs, kind = 'zero')(t))
 
 #    _test_curve_shape()
-#    _test_monotone_convex()
-    _test_compare_speed()
+    _test_monotone_convex()
+#    _test_compare_speed()
