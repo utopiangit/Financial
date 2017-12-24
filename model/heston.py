@@ -3,8 +3,6 @@ import numpy as np
 from scipy import integrate
 from scipy import real
 import black_scholes as bs
-import matplotlib.pyplot as plt
-import time
 
 def heston_call(fwd, strike, tau, v0, vbar, kappa, xi, rho):
     '''
@@ -45,6 +43,8 @@ def _P(i, x, tau, v0, vbar, kappa, xi, rho):
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    import time
     f = 100
     strike = 110
     tau = 1
