@@ -3,6 +3,20 @@ import numpy as np
 from scipy import interpolate
 
 def log_linear(t, grids, discount_factors):
+    '''Interpolate discount factor with Log Linear
+    
+    Arguments:
+       t : array_like  
+           Points to evaluate the interpolant discount factor.
+       grids : array_like
+           Time grids that fixed discount factors are given.
+       discount_factors : array_like
+           Discount factors given fixed.
+    
+    Return:
+        y : array_like
+        Interpolated discount factors.
+    '''
     if not(np.isclose(grids[0], 0)):
         grids = np.append([0], grids)
         discount_factors = np.append(1, discount_factors)
@@ -34,6 +48,22 @@ def log_cubic(t, grids, discount_factors):
 
 
 def monotone_convex(t, grids, discount_factors):
+    '''Interpolate discount factor with Monotone Convex by Hagan and West(2006)
+    
+    Arguments:
+       t : array_like  
+           Points to evaluate the interpolant discount factor.
+       grids : array_like
+           Time grids that fixed discount factors are given.
+       discount_factors : array_like
+           Discount factors given fixed.
+    
+    Return:
+        y : array_like
+        Interpolated discount factors.
+    '''
+    if not(isinstance(t, np.ndarray)):
+        t = np.array([t])
     if not(np.isclose(grids[0], 0)):
         grids = np.append([0], grids)
         discount_factors = np.append(1, discount_factors)
@@ -117,7 +147,6 @@ def _test_compare_speed():
     t = 0.5
     grids = [1,2,3,4]
     dfs = [0.99, 0.98,0.97,0.96]
-    print(log_linear(t, grids, dfs))
 
     ts = np.arange(0, 10, 1./365.)
     
@@ -126,11 +155,17 @@ def _test_compare_speed():
     t1 = time.time()
     df2 = log_linear(ts, grids, dfs)
     t2 = time.time()
-    plt.plot(ts, df1 - df2, label = 'diff')
+    df3 = monotone_convex(ts, grids, dfs)
+    t3 = time.time()
+
+    plt.plot(ts, df1, label = 'log linear')
+    plt.plot(ts, df3, label = 'monotone convex')
+
     plt.legend()
     plt.show()
     print('slow :', t1 - t0)
     print('broadcast :', t2 - t1)
+    print('monotone convex:', t3 - t2)
     
     
     fwd = -np.log(df1[1:] / df1[:-1]) / (ts[1:] - ts[:-1])
@@ -162,7 +197,7 @@ def _test_curve_shape():
     plt.legend()
     plt.show()
     
-def _test_monotone_ceonvex():
+def _test_monotone_convex():
     import matplotlib.pyplot as plt
 
     ts = np.arange(0, 5, 1./365.)
@@ -185,11 +220,12 @@ def _test_monotone_ceonvex():
     print(fwd)
     
 if __name__ == '__main__':
-#    t = 1.5
-#    grids = [1,2,3,4]
-#    dfs = [0.993, 0.98,0.975,0.95]
-#
+    t = 1.1
+    grids = [1,2,3,4]
+    dfs = [0.993, 0.98,0.975,0.95]
+    print(monotone_convex(t, grids, dfs))
 #    print(interpolate.interp1d(grids, dfs, kind = 'zero')(t))
 
 #    _test_curve_shape()
-    _test_monotone_ceonvex()
+#    _test_monotone_convex()
+    _test_compare_speed()
