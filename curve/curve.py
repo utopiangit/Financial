@@ -49,6 +49,7 @@ def build_curve(curve, instruments, market_rates):
 def _test_build_curve():
     import instruments as inst    
     import matplotlib.pyplot as plt
+    import pickle
 
     # market data to fit
     start_dates = [0, 0, 0, 0, 0]
@@ -69,7 +70,7 @@ def _test_build_curve():
     built_linear = build_curve(linear, instruments, swap_rates)
     built_cubic = build_curve(cubic, instruments, swap_rates)
     built_mc = build_curve(mc, instruments, swap_rates)
-    ts = np.arange(0, 5, 1 / 365)
+    ts = np.arange(0, 5, 1. / 365)
     df_linear = built_linear.get_df(ts)
     df_cubic = built_cubic.get_df(ts)
     df_mc = built_mc.get_df(ts)
@@ -88,6 +89,10 @@ def _test_build_curve():
     plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
     
+    print('mc grid :',built_mc._grid_terms)
+    print('mc df :',built_mc._discount_factors)
+    with open('curve.pickle', mode='wb') as f:
+        pickle.dump(built_mc, f)
     
 if __name__ == '__main__':
     _test_build_curve()
