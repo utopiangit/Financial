@@ -7,31 +7,23 @@ class Curve(object):
     def __init__(self, 
                  grid_terms,
                  discount_factors,
-                 interpolation_method = 'log_linear'):
-        self._grid_terms = np.array(grid_terms)
-        self._discount_factors = np.array(discount_factors)
+                 interpolation_method = None):
+        self._grid_terms = grid_terms
+        self._discount_factors = discount_factors
         self._interpolation_method = interpolation_method 
     
     def get_df(self, t):
         switcher = {
-            'log_linear' : 
-                interpolation.log_linear(t,
-                                         self._grid_terms,
-                                         self._discount_factors),
-            'log_cubic' : 
-                interpolation.log_cubic(t,
-                                        self._grid_terms,
-                                        self._discount_factors),
-
-            'monotone_convex' : 
-                interpolation.monotone_convex(t,
-                                              self._grid_terms,
-                                              self._discount_factors)
+            'log_linear' : interpolation.log_linear,
+            'log_cubic' : interpolation.log_cubic,
+            'monotone_convex' : interpolation.monotone_convex
             }
-        return switcher[self._interpolation_method]
+        return switcher[self._interpolation_method](t,
+                                                    self._grid_terms,
+                                                    self._discount_factors)
     
-    def _update(self, discout_dactors):
-        self._discount_factors = discout_dactors
+    def _update(self, discount_factors):
+        self._discount_factors = discount_factors
             
 
 def build_curve(curve, instruments, market_rates):
@@ -62,29 +54,29 @@ def _test_build_curve():
     # generate curve grids same as swap end dates
     grids = np.array(end_dates)
     dfs = np.exp(-np.array(swap_rates) * grids)
-    linear = Curve(grids, dfs, interpolation_method = 'log_linear')
-    cubic = Curve(grids, dfs, interpolation_method = 'log_cubic')
+#    linear = Curve(grids, dfs, interpolation_method = 'log_linear')
+#    cubic = Curve(grids, dfs, interpolation_method = 'log_cubic')
     mc = Curve(grids, dfs, interpolation_method = 'monotone_convex')
     
 
-    built_linear = build_curve(linear, instruments, swap_rates)
-    built_cubic = build_curve(cubic, instruments, swap_rates)
+#    built_linear = build_curve(linear, instruments, swap_rates)
+#    built_cubic = build_curve(cubic, instruments, swap_rates)
     built_mc = build_curve(mc, instruments, swap_rates)
     ts = np.arange(0, 5, 1. / 365)
-    df_linear = built_linear.get_df(ts)
-    df_cubic = built_cubic.get_df(ts)
+#    df_linear = built_linear.get_df(ts)
+#    df_cubic = built_cubic.get_df(ts)
     df_mc = built_mc.get_df(ts)
-    plt.plot(ts, df_linear, label = 'log linear')
-    plt.plot(ts, df_cubic, label = 'log cubic')
+#    plt.plot(ts, df_linear, label = 'log linear')
+#    plt.plot(ts, df_cubic, label = 'log cubic')
     plt.plot(ts, df_mc, label = 'monotone convex')
     plt.legend()    
     plt.show()
     
-    fwd_linear = -np.log(df_linear[1:] / df_linear[:-1]) / (ts[1:] - ts[:-1])
-    fwd_cubic = -np.log(df_cubic[1:] / df_cubic[:-1]) / (ts[1:] - ts[:-1])
+#    fwd_linear = -np.log(df_linear[1:] / df_linear[:-1]) / (ts[1:] - ts[:-1])
+#    fwd_cubic = -np.log(df_cubic[1:] / df_cubic[:-1]) / (ts[1:] - ts[:-1])
     fwd_mc = -np.log(df_mc[1:] / df_mc[:-1]) / (ts[1:] - ts[:-1])
-    plt.plot(ts[:-1], fwd_linear, label = 'log linear')
-    plt.plot(ts[:-1], fwd_cubic, label = 'log cubic')
+#    plt.plot(ts[:-1], fwd_linear, label = 'log linear')
+#    plt.plot(ts[:-1], fwd_cubic, label = 'log cubic')
     plt.plot(ts[:-1], fwd_mc, label = 'monotone convex')
     plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
