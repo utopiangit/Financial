@@ -62,7 +62,6 @@ def monotone_convex(t, grids, discount_factors):
         y : array_like
         Interpolated discount factors.
     '''
-    discount_factors = discount_factors.astype(float)
     if not(isinstance(t, np.ndarray)):
         t = np.array([t])
     if not(np.isclose(grids[0], 0)):
@@ -87,18 +86,15 @@ def monotone_convex(t, grids, discount_factors):
                              np.inf),
                     axis = 1)
     indice = np.array(indice, dtype = 'int16')
+
     f_iminus1 = f[0, indice - 1]
     f_i = f[0, indice]
     fd_i = f_discrete[0, indice - 1]
-#    f_iminus1 = interpolate.interp1d(grids, f, kind = 'zero')(t)
-#    f_i = interpolate.interp1d(grids[:-1], f[1:], kind = 'zero', fill_value = 'extrapolate')(t)
-#    fd_i = interpolate.interp1d(grids[:-1], f_discrete, kind = 'zero', fill_value = 'extrapolate')(t)
     g0 = f_iminus1 - fd_i
     g1 = f_i - fd_i
     t_iminus1 = grids[indice - 1]
     t_i = grids[indice]
-#    t_iminus1 = interpolate.interp1d(grids, grids, kind = 'zero')(t)
-#    t_i = interpolate.interp1d(grids[:-1], grids[1:], kind = 'zero', fill_value = 'extrapolate')(t)
+
     x = (t - t_iminus1) / (t_i - t_iminus1)
     def integrate_g(x, g0, g1):
         # region(i)
@@ -123,18 +119,13 @@ def monotone_convex(t, grids, discount_factors):
                  0,
                  np.where((g0 + 2 * g1) * (2 * g0 + g1) < 0,
                           g_integrated[0],
-                          np.where(g1 * (g0 + 2 * g1) <= 0, 
+                          np.where(g0 * (2 * g0 + g1) <= 0, 
                                    g_integrated[1],
-                                   np.where(g0 * (2 * g0 + g1) <= 0,
+                                   np.where(g1 * (g0 + 2 * g1) <= 0,
                                             g_integrated[2],
-                                            np.where(g0 * g1 >= 0, 
-                                                     g_integrated[3],
-                                                     np.NAN)))))
+                                            g_integrated[3]))))
     df = discount_factors[indice - 1]
-#    df = interpolate.interp1d(grids, discount_factors, kind = 'zero')(t)
-#    print(G)
     return df * np.exp(-G - fd_i * (t - t_iminus1))
-
     
 
 def _slow_log_linear(t, grids, discount_factors):
@@ -159,7 +150,7 @@ def _test_compare_speed():
 
     t = 0.5
     grids = [1,2,3,4]
-    dfs = [0.99, 0.98,0.97,0.96]
+    dfs = [0.99, 0.985,0.97,0.95]
 
     ts = np.arange(0, 10, 1./365.)
     
@@ -187,90 +178,35 @@ def _test_compare_speed():
 
 def _test_curve_shape():
     import matplotlib.pyplot as plt
-    grids = [1,2,3,4]
-    dfs = [0.993, 0.98,0.975,0.95]
+    
+    print('===== Compare the shapes of curves ======')
+    grids = [1,2,3,4, 5]
+    dfs = [0.993, 0.98,0.97,0.95, 0.94]
 
-    ts = np.arange(0, 4, 1./365.)
+    ts = np.arange(0, 5, 1./365.)
     
     df_linear = log_linear(ts, grids, dfs)
-    df_cubic = log_cubic(ts, grids, dfs)
     df_quadratic = log_quadratic(ts, grids, dfs)
+    df_cubic = log_cubic(ts, grids, dfs)
+    df_mc = monotone_convex(ts, grids, dfs)
     plt.plot(ts, df_linear, label = 'linear')
     plt.plot(ts, df_quadratic, label = 'quadratic')
     plt.plot(ts, df_cubic, label = 'cubic')
-    plt.legend()
+    plt.plot(ts, df_mc, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
 
     fwd_linear = -np.log(df_linear[1:] / df_linear[:-1]) / (ts[1:] - ts[:-1])
     fwd_quadratic = -np.log(df_quadratic[1:] / df_quadratic[:-1]) / (ts[1:] - ts[:-1])
     fwd_cubic = -np.log(df_cubic[1:] / df_cubic[:-1]) / (ts[1:] - ts[:-1])
+    fwd_mc = -np.log(df_mc[1:] / df_mc[:-1]) / (ts[1:] - ts[:-1])
     plt.plot(ts[:-1], fwd_linear, label = 'linear')
     plt.plot(ts[:-1], fwd_quadratic, label = 'quadratic')
     plt.plot(ts[:-1], fwd_cubic, label = 'cubic')
-    plt.legend()
+    plt.plot(ts[:-1], fwd_mc, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
-    
-def _test_monotone_convex():
-    import matplotlib.pyplot as plt
-    import pickle
-    
-    ts = np.arange(0, 5, 1./365.)
-    grids = np.array([1,2,3,4,5])
-    dfs = np.array([0.9900498, 0.9762857, 0.96464029, 0.94176454, 0.92311551])
-
-    dfs_mc = monotone_convex(ts, grids, dfs)
-    dfs_ll = log_linear(ts, grids, dfs)
-    plt.plot(ts, dfs_mc, label = 'monotone_convex')
-    plt.plot(ts, dfs_ll, label = 'log_linear')
-    plt.legend()
-    plt.show()
-
-    fwd = -np.log(dfs_mc[1:] / dfs_mc[:-1]) / (ts[1:] - ts[:-1])
-    fwd_ll = -np.log(dfs_ll[1:] / dfs_ll[:-1]) / (ts[1:] - ts[:-1])
-    plt.plot(ts[:-1], fwd, label = 'monotone_convex')
-    plt.plot(ts[:-1], fwd_ll, label = 'log_linear')
-    plt.legend()
-    plt.show()
-
-    with open('sample.pickle', mode='wb') as f:
-#        pickle.dump(ts, f)    
-        pickle.dump(dfs_mc, f) 
-        
-        
-def _compare_mc():
-    import pickle
-    import matplotlib.pyplot as plt
-    import curve
-    with open('curve.pickle', mode='rb') as f:
-        mc = pickle.load(f)
-#    with open('sample2.pickle', mode='rb') as f:
-#        df2 = pickle.load(f)
-    ts = np.arange(0, 5, 1./365.)
-    grids = np.array([1,2,3,4,5])
-    dfs = np.array([0.9900498, 0.9762857, 0.96464029, 0.94176454, 0.92311551])
-    df_interp = monotone_convex(ts, grids, dfs)
-    df_pickle = mc.get_df(ts)
-       
-    c = curve.Curve(grids, dfs, 'monotone_convex')
-    df_mc = c.get_df(ts)
-
-    plt.plot(ts, df_interp - df_pickle, label = 'interp - pickle')
-    plt.plot(ts, df_pickle - df_mc, label = 'pickle - curve')
-    plt.plot(ts, df_mc - df_interp, label = 'curve - interp')
-    plt.legend()
-    plt.show()
-
-    fwd_pickle = -np.log(df_pickle[1:] / df_pickle[:-1]) / (ts[1:] - ts[:-1])
-    fwd_interp = -np.log(df_interp[1:] / df_interp[:-1]) / (ts[1:] - ts[:-1])
-    plt.plot(ts[:-1], fwd_pickle, label = 'pickle')
-    plt.plot(ts[:-1], fwd_interp, label = 'interp')
-    print('pickle grid', mc._grid_terms)
-    print('curve grid', grids)
-    
-    print('pickle df', mc._discount_factors)
-    print('curve df', dfs)
-    
-    
+                
 def _calibrate():
     import scipy.optimize as so
     import matplotlib.pyplot as plt
@@ -280,34 +216,25 @@ def _calibrate():
     end_dates = np.array([1, 2, 3, 4, 5])
     swap_rates = [0.01, 0.012, 0.012, 0.015, 0.016]
 
-    loss = lambda dfs: np.sum(np.power(-np.log(monotone_convex(end_dates, grids, dfs)) / end_dates- swap_rates, 2))
+    interp = monotone_convex
+    loss = lambda dfs: np.sum(np.power(-np.log(interp(end_dates, grids, dfs)) / end_dates- swap_rates, 2))
+    print('before calib :', loss(discount_factors))
     param = so.minimize(loss, 
                         discount_factors,
                         tol = 1e-6)
-#    print(param)
 
-    ts = np.arange(0, 5, 1 / 365)
-#    ts = np.array([4.2])
-    import copy
-    calib = np.array(copy.deepcopy(param.x), dtype = float)
-    print(calib[0])
-    given = np.array([ 0.99004983,  0.97628569,  0.96464029,  0.94176453,  0.92311631])
-    print(given[0])
-    df_calib = monotone_convex(ts, grids, calib)
-    df_param = monotone_convex(ts, grids, given)
-    print('calib', -np.log(monotone_convex(end_dates, grids, calib)) / end_dates)
-    print(-np.log(monotone_convex(end_dates, grids, given)) / end_dates)
+    print('after calib :', loss(param.x))
+    ts = np.arange(0, 5, 1/365)
+    df_calib = interp(ts, grids, param.x)
+    print('calib :', -np.log(interp(end_dates, grids, param.x)) / end_dates)
     
-    print('calib', df_calib)
-    print('param', df_param)
-
     fwd_calib = -np.log(df_calib[1:] / df_calib[:-1]) / (ts[1:] - ts[:-1])
-    fwd_param = -np.log(df_param[1:] / df_param[:-1]) / (ts[1:] - ts[:-1])
-    plt.plot(ts[:-1], fwd_calib, label = 'calib')
-#    plt.plot(ts[:-1], fwd_param, label = 'param')    
+    plt.plot(ts, df_calib, label = 'monotone convex')
     plt.legend()
     plt.show()
-    print(param)
+    plt.plot(ts[:-1], fwd_calib, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+    plt.show()
     
 if __name__ == '__main__':
 #    t = 1.1
@@ -316,8 +243,6 @@ if __name__ == '__main__':
 #    print(monotone_convex(t, grids, dfs))
 #    print(interpolate.interp1d(grids, dfs, kind = 'zero')(t))
 
-#    _test_curve_shape()
-#    _test_monotone_convex()
+    _test_curve_shape()
 #    _test_compare_speed()
-#    _compare_mc()
-    _calibrate()
+#    _calibrate()
