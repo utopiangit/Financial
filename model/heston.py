@@ -3,6 +3,7 @@ import numpy as np
 from scipy import integrate
 from scipy import real
 import black_scholes as bs
+import scipy.optimize as so
 
 def heston_call(fwd, strike, tau, v0, vbar, kappa, xi, rho):
     '''
@@ -41,8 +42,23 @@ def _P(i, x, tau, v0, vbar, kappa, xi, rho):
     integrand = lambda w: _integrand(i, x, w, tau, v0, vbar, kappa, xi, rho)
     return 1. / 2. + 1. / np.pi * integrate.quad(integrand, 0, np.inf)[0]
 
+def implied_volatility(fwd, strike, tau, v0, vbar, kappa, xi, rho):
+    return bs.implied_black_volatility(
+        heston_call(fwd, strike, tau, v0, vbar, kappa, xi, rho), 
+        fwd, 
+        strike, 
+        tau)
 
-if __name__ == '__main__':
+def strike_by_delta(fwd, delta, tau, v0, vbar, kappa, xi, rho):
+    '''
+    Calculate Corresponding Strike Under Heston Model
+    '''
+    error = lambda strike : bs.black_delta(
+        fwd, strike, implied_volatility(fwd, strike, tau, v0, vbar, kappa, xi, rho), tau) - delta - (1 if delta < 0 else 0)
+    return so.newton(error, x0 = fwd)
+
+
+def _test_speed():
     import matplotlib.pyplot as plt
     import time
     f = 100
@@ -50,16 +66,16 @@ if __name__ == '__main__':
     tau = 1
     v = 0.02
     vbar = 0.02
-    lambd = 1
-    eta = 1
+    kappa = 1
+    xi = 1
     rho = -0.2
-    price = heston_call(f, strike, tau, v, vbar, lambd, eta, rho)
+    price = heston_call(f, strike, tau, v, vbar, kappa, xi, rho)
     print('Heston :', price)
     price_bs = bs.black_call(f, strike, np.sqrt(v), tau)
     print('BS :', price_bs)
     
     strikes = np.arange(0.5 * f, 1.5 * f, step = f / 100.)
-    prices = [heston_call(f, k, tau, v, vbar, lambd, eta, rho) for k in strikes]
+    prices = [heston_call(f, k, tau, v, vbar, kappa, xi, rho) for k in strikes]
     t0 = time.time()
     volatilities = bs.implied_black_volatilities(np.array(prices), f, np.array(strikes), tau)
     t1 = time.time()
@@ -68,3 +84,19 @@ if __name__ == '__main__':
     print('Multidimensional roots finding :', t1 - t0)
     print('Scalar roots finding :', t2 - t1)
     plt.plot(strikes, volatilities)
+    
+
+if __name__ == '__main__':
+    f = 100
+    strike = 110
+    tau = 1  
+    vbar = 0.02
+    kappa = 1
+    xi = 1
+    rho = -0.2
+
+    vol = implied_volatility(f, strike, tau, v0, vbar, kappa, xi, rho)
+    print(vol)
+    delta = 0.25
+    k = strike_by_delta(fwd, delta, tau, v0, vbar, kappa, xi, rho)
+    print(k)
