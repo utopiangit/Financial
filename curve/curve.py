@@ -26,6 +26,23 @@ class Curve(object):
         self._discount_factors = discount_factors
         return self
             
+class BasisCurve(Curve):
+    def __init__(self,
+                 base_curve,
+                 grid_terms,
+                 discount_factors,
+                 interpolation_method = None):
+         super(BasisCurve, self).__init__(grid_terms,
+                                          discount_factors,
+                                          interpolation_method)
+         self._base_curve = base_curve
+#         self._grid_terms = grid_terms
+#         self._discount_factors = discount_factors
+#         self._interpolation_method = interpolation_method
+    
+    def get_df(self, t):
+        return self._base_curve.get_df(t) * super().get_df(t)
+
 
 def build_curve(curve, instruments, market_rates):
     def loss(dfs):        
@@ -43,6 +60,7 @@ def _test_build_curve():
     import instruments as inst    
     import matplotlib.pyplot as plt
 
+    print('===== Building curves whose swap rates are the same =====')
     # market data to fit
     start_dates = [0, 0, 0, 0, 0]
     end_dates = [1, 2, 3, 4, 5]
@@ -88,6 +106,9 @@ def _test_build_curve():
 
 def _vectorized_calib():
     import instruments as inst    
+    import time
+    print('===== Compare the time to optimize curves =====')    
+    
     start_dates = np.array([0, 0, 0, 0, 0])
     end_dates = np.array([1, 2, 3, 4, 5])
     swap_rates = np.array([0.01, 0.011, 0.013, 0.015, 0.016])
@@ -97,16 +118,59 @@ def _vectorized_calib():
     dfs = np.exp(-np.array(swap_rates) * grids)
     mc = Curve(grids, dfs, interpolation_method = 'monotone_convex')
     loss = lambda x: np.sum(np.power(insts.par_rate(mc._update(x)) - swap_rates, 2))
-    print('before :', loss(dfs))
+#    print('before :', loss(dfs))
+    t0 = time.time()
     param = so.minimize(loss, 
                         dfs,
                         tol = 1e-8)
-    print('after:', loss(param.x))
-
+    t1 = time.time()
+#    print('after:', loss(param.x))
+    print('vectorized :', t1 - t0, 's')
+        
     mc._update(param.x)
     print(insts.par_rate(mc))
-    print(param)
+#    print(param)
+
+
+    insts = [inst.SimpleRate(start, end) for start, end in zip(start_dates, end_dates)]
+    mc2 = Curve(grids, dfs, interpolation_method = 'monotone_convex')
+    t2 = time.time()
+    build_curve(mc2, insts, swap_rates)    
+    t3 = time.time()
+    print('build :', t3 - t2, 's')
+    print([inst.par_rate(mc2) for inst in insts])
+
+    
+def _test_basis():
+    import matplotlib.pyplot as plt
+    base_grids = np.array([0.25, 0.5, 0.75, 1, 1.5])
+    base_rates = np.array([0.005, 0.006, 0.006, 0.007, 0.01])
+
+    base_dfs = np.exp(-np.array(base_rates) * base_grids)
+    base_curve = Curve(base_grids, base_dfs, interpolation_method = 'log_linear')
+
+    basis_grids = np.array([1,2,3,4,5])
+    basis_rates = np.array([0.005, 0.006, 0.006, 0.007, 0.008])    
+    basis_dfs = np.exp(-np.array(basis_rates) * basis_grids)
+    basis_curve = BasisCurve(base_curve, basis_grids, basis_dfs, 'monotone_convex')
+    
+    ts = np.arange(0, 5, 1/365)
+    df_base = base_curve.get_df(ts)
+    df_basis = basis_curve.get_df(ts)
+    plt.plot(ts, df_base, label = 'base')
+    plt.plot(ts, df_basis, label = 'basis')
+    plt.legend()
+    plt.show()    
+
+    fwd_base = -np.log(df_base[1:] / df_base[:-1]) / (ts[1:] - ts[:-1])
+    fwd_basis = -np.log(df_basis[1:] / df_basis[:-1]) / (ts[1:] - ts[:-1])
+    plt.plot(ts[:-1], fwd_base, label = 'base')
+    plt.plot(ts[:-1], fwd_basis, label = 'basis')    
+    plt.legend()
+    plt.show()    
+
     
 if __name__ == '__main__':
-    _test_build_curve()
+#    _test_build_curve()
 #    _vectorized_calib()
+    _test_basis()
