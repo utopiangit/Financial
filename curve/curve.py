@@ -152,9 +152,10 @@ def _test_basis():
     base_dfs = np.exp(-np.array(base_rates) * base_grids)
     base_curve = Curve(base_grids, base_dfs)
 
-    basis_grids = np.array([1,2,3,4,5])
-    basis_rates = np.array([0.004, 0.006, 0.006, 0.007, 0.008])    
+    basis_grids = np.array([1, 2, 3, 4, 5])
+    basis_rates = np.array([0.00, 0.001, 0.001, 0.002, 0.003])    
     basis_dfs = np.exp(-np.array(basis_rates) * basis_grids)
+    print('basis_df :',basis_dfs)
     basis_curve = BasisCurve(base_curve, basis_grids, basis_dfs, 'monotone_convex')
     
     ts = np.arange(0, 5, 1/365)
@@ -169,7 +170,8 @@ def _test_basis():
     fwd_basis = -np.log(df_basis[1:] / df_basis[:-1]) / (ts[1:] - ts[:-1])
     plt.plot(ts[:-1], fwd_base, label = 'base')
     plt.plot(ts[:-1], fwd_basis, label = 'basis')    
-    plt.legend()
+    plt.plot(ts[:-1], fwd_basis - fwd_base, label = 'diff')    
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()    
 
     

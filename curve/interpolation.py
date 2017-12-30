@@ -76,6 +76,8 @@ def monotone_convex(t, grids, discount_factors):
     fn = (3. * f_discrete[-1] - f[-1]) / 2.
     f = np.append([f0], f)
     f = np.append(f, [fn])
+#    print('grids :', grids)
+#    print('f_discrete :', f_discrete)
 #    print('f :', f)
 
     f = f.reshape(1, -1)
@@ -102,15 +104,18 @@ def monotone_convex(t, grids, discount_factors):
         # region(ii)
         eta = 1 + 3. * g0 / (g1 - g0)
         Gii = g0 * x + np.where(x < eta, 0, (g1 - g0) * (x - eta)**3 / (1 - eta)**2 / 3.)
+        Gii = np.where(np.isnan(Gii), 0, Gii)
         # region(iii)
         eta = 3. * g1 / (g1 - g0)
         Giii = g1 * x + (g0 - g1) / 3. * (eta - np.where(x < eta, (eta - x)**3 / eta**2,  0))
+        Giii = np.where(np.isnan(Giii), 0, Giii)
         # region(iv)
         eta = g1 / (g0 + g1)
         A = -g0 * g1 / (g0 + g1)
         Giv = A * x + np.where(x < eta, 
                                1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2), 
                                1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
+        Giv = np.where(np.isnan(Giv), 0, Giv)
         G = [Gi, Gii, Giii, Giv]        
         return G
     g_integrated = integrate_g(x, g0, g1)
