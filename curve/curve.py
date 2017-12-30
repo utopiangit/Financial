@@ -7,10 +7,10 @@ class Curve(object):
     def __init__(self, 
                  grid_terms,
                  discount_factors,
-                 interpolation_method = None):
+                 interpolation_method = 'log_linear'):
         self._grid_terms = grid_terms
         self._discount_factors = discount_factors
-        self._interpolation_method = interpolation_method 
+        self._interpolation_method = interpolation_method
     
     def get_df(self, t):
         switcher = {
@@ -31,7 +31,7 @@ class BasisCurve(Curve):
                  base_curve,
                  grid_terms,
                  discount_factors,
-                 interpolation_method = None):
+                 interpolation_method = 'log_linear'):
          super(BasisCurve, self).__init__(grid_terms,
                                           discount_factors,
                                           interpolation_method)
@@ -143,14 +143,17 @@ def _vectorized_calib():
     
 def _test_basis():
     import matplotlib.pyplot as plt
-    base_grids = np.array([0.25, 0.5, 0.75, 1, 1.5])
-    base_rates = np.array([0.005, 0.006, 0.006, 0.007, 0.01])
+    print('Plot of a base curve and a basis curve.')
+    print('The basis curve is built on the base curve.')
+
+    base_grids = np.array([0.5, 1, 1.5, 2, 2.5])
+    base_rates = np.array([0.005, 0.004, 0.006, 0.008, 0.01])
 
     base_dfs = np.exp(-np.array(base_rates) * base_grids)
-    base_curve = Curve(base_grids, base_dfs, interpolation_method = 'log_linear')
+    base_curve = Curve(base_grids, base_dfs)
 
     basis_grids = np.array([1,2,3,4,5])
-    basis_rates = np.array([0.005, 0.006, 0.006, 0.007, 0.008])    
+    basis_rates = np.array([0.004, 0.006, 0.006, 0.007, 0.008])    
     basis_dfs = np.exp(-np.array(basis_rates) * basis_grids)
     basis_curve = BasisCurve(base_curve, basis_grids, basis_dfs, 'monotone_convex')
     
