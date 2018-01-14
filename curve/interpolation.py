@@ -215,21 +215,26 @@ def _test_curve_shape():
 def _calibrate():
     import scipy.optimize as so
     import matplotlib.pyplot as plt
-    grids = np.array([1,2,3,4,5])
-    discount_factors = np.array([0.99, 0.97, 0.96, 0.94, 0.92])
-    
-    end_dates = np.array([1, 2, 3, 4, 5])
-    swap_rates = [0.01, 0.012, 0.012, 0.015, 0.016]
+    import time
 
-    interp = monotone_convex
+    grids = np.array([1,2,3,4,5, 6, 7, 8, 9, 10])
+    discount_factors = np.array([0.993, 0.98,0.97,0.95, 0.94, 0.93, 0.92, 0.91,0.9, 0.89])
+    
+    end_dates = np.array([1,2,3,4,5, 6, 7, 8, 9, 10])
+    swap_rates = [0.01, 0.012, 0.015, 0.015, 0.017, 0.018, 0.018, 0.019, 0.019, 0.02]
+
+    t0 = time.time()
+    interp = log_linear
     loss = lambda dfs: np.sum(np.power(-np.log(interp(end_dates, grids, dfs)) / end_dates- swap_rates, 2))
     print('before calib :', loss(discount_factors))
     param = so.minimize(loss, 
                         discount_factors,
                         tol = 1e-6)
-
+    t1 = time.time()
     print('after calib :', loss(param.x))
-    ts = np.arange(0, 5, 1/365)
+    print('time :', t1 - t0)
+    print('df :', param.x)
+    ts = np.arange(0, 10, 1/365)
     df_calib = interp(ts, grids, param.x)
     print('calib :', -np.log(interp(end_dates, grids, param.x)) / end_dates)
     
@@ -248,6 +253,6 @@ if __name__ == '__main__':
 #    print(monotone_convex(t, grids, dfs))
 #    print(interpolate.interp1d(grids, dfs, kind = 'zero')(t))
 
-    _test_curve_shape()
+#    _test_curve_shape()
 #    _test_compare_speed()
-#    _calibrate()
+    _calibrate()

@@ -100,10 +100,19 @@ if __name__ == '__main__':
     vol = 0.1
     tau = 1
     v = black_call(fwd, strike, vol, tau)
+    print('v :', v)
     delta = -0.25
     deltastrike = strike_by_delta(fwd, delta, vol, tau)
     print('Strike :', deltastrike)
     print('Delta :',black_delta(fwd, deltastrike, vol, tau))
     
     print(implied_black_volatility(v, fwd, strike, tau))
+    
+    df = 1
+    dv = 0.01    
+    vanna = (black_call(fwd + df, strike, vol + dv, tau) 
+             - black_call(fwd - df, strike, vol + dv, tau) 
+             - black_call(fwd + df, strike, vol - dv, tau) 
+             + black_call(fwd - df, strike, vol - dv, tau)) / (4 * df * dv)
+    print('vanna :', vanna)
     
