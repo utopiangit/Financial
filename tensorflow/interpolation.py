@@ -179,7 +179,6 @@ def _test_curve_shape():
     dfs = tf.Variable([0.993, 0.98,0.97,0.95, 0.94], dtype = tf.float32)
 
     ts = np.arange(0, 6, 1. / 365., dtype = np.float32)
-#    ts = 3.2
     
     df = log_linear(ts, grids, dfs)
     with tf.Session() as sess:
@@ -200,47 +199,68 @@ def _test_build_curve():
     import matplotlib.pyplot as plt
     import time
 
-    grids = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype = np.float32)
-    dfs = tf.Variable([1, 0.993, 0.98,0.97,0.95, 0.94, 0.93, 0.92, 0.91,0.9, 0.89], dtype = tf.float32)
-    terms = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 
+#    grids = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype = np.float32)
+#    dfs = tf.Variable([1, 0.993, 0.98,0.97,0.95, 0.94, 0.93, 0.92, 0.91,0.9, 0.89], dtype = tf.float32)
+#    terms = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 
+#                     dtype = np.float32)
+#    rate = tf.constant([0.01, 0.012, 0.015, 0.015, 0.017, 0.018, 0.018, 0.019, 0.019, 0.02], 
+#                       dtype = np.float32)
+    terms = tf.constant([1, 2, 3, 4, 5], 
                      dtype = np.float32)
-    rate = tf.constant([0.01, 0.012, 0.015, 0.015, 0.017, 0.018, 0.018, 0.019, 0.019, 0.02], 
+    rate = tf.constant([0.01, 0.012, 0.015, 0.015, 0.017], 
                        dtype = np.float32)
+
+    grids = tf.constant([0, 1, 2, 3, 4, 5], dtype = np.float32)
+    dfs = tf.Variable([1, 0.993, 0.98,0.97,0.95, 0.94], dtype = tf.float32)
     
     t0 = time.time()
     curve = log_linear
-    rate_curve = -tf.log(curve(terms, grids, dfs)) / terms
-    loss = tf.reduce_mean(tf.square(rate - rate_curve))
+    rate_calc = -tf.log(curve(terms, grids, dfs)) / terms
+    loss = tf.reduce_mean(tf.square(rate - rate_calc))
     optimizer = tf.train.AdamOptimizer(0.5).minimize(loss)
 
+    # A list of `sum(d rate_calc/d dfs)` for each df in `dfs`.    
+    jacobian = []    
+    for i in range(rate_calc.shape[0]):
+        jacobian.append(tf.gradients(rate_calc[i], dfs))
+    
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(500):
+        for i in range(300):
             sess.run(optimizer)
             
         t1 = time.time()            
-        dfs = sess.run(dfs)
-        print(dfs)
-        print('rates :',sess.run(-tf.log(dfs) / grids))
+        dfs_calib = sess.run(dfs)
+        print('df@regular :', dfs_calib)
+        print('rate calc :', sess.run(rate_calc))
         print('time :', t1 - t0)
-            
+
+#        t2 = time.time()                    
+#        jacobian_value = sess.run(jacobian)
+#        t3 = time.time()            
+#        print('jacobian :', jacobian_value)
+#        print('time :', t3 - t2)      
+
 
     ts = np.arange(0, 10, 1. / 365., dtype = np.float32)
-#    ts = 3.2
     
-    df = log_linear(ts, grids, dfs)
+    df = log_linear(ts, grids, dfs_calib)
+    t4 = time.time()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         df = sess.run(df)
 #        print(sess.run(df))
+    t5 = time.time()
+    print('time :', t5 - t4)
     plt.plot(ts, df, label = 'log linear')
     plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
 
-    fwd = -np.log(df[1:] / df[:-1]) / (ts[1:] - ts[:-1])
-    plt.plot(ts[:-1], fwd, label = 'log linear')
-    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
-    plt.show()
+
+#    fwd = -np.log(df[1:] / df[:-1]) / (ts[1:] - ts[:-1])
+#    plt.plot(ts[:-1], fwd, label = 'log linear')
+#    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+#    plt.show()
     
 
 def broadcastable_where(condition, x=None, y=None, *args, **kwargs):
