@@ -6,7 +6,7 @@ import scipy.optimize as so
 def sabr_implied_volatility(forward, strike, tau, alpha, beta, rho, nu):
     '''
     Calculate Implied Volatility Under SABR Model by Hagan et al(2002).
-        
+
     '''
     x = np.log(forward / strike)
     fkbeta = (forward * strike)**((1. - beta) / 2.0)
@@ -18,9 +18,9 @@ def sabr_implied_volatility(forward, strike, tau, alpha, beta, rho, nu):
     D = (2. - 3. * rho**2) * nu**2 / 24.
     E = 1. + (B + C + D) * tau
     return np.where(np.isclose(chi,  0),
-                    alpha / fkbeta * E, 
+                    alpha / fkbeta * E,
                     alpha / (fkbeta * A) * zeta / chi * E)
-    
+
 def strike_by_delta(forward, delta, tau, alpha, beta, rho, nu):
     '''
     Calculate Corresponding Strike Under SABR Model
@@ -32,7 +32,7 @@ def strike_by_delta(forward, delta, tau, alpha, beta, rho, nu):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    
+
     alpha = 0.3
     beta = 0.7
     rho = -0.2
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     plt.plot(strikes, vols, label = 'sabr')
     plt.legend()
     plt.show()
-    
+
     delta = -0.25
     deltastrike = strike_by_delta(fwd, delta, tau, alpha, beta, rho, nu)
     print('Strike :', deltastrike)

@@ -4,15 +4,15 @@ from scipy import interpolate
 
 def log_linear(t, grids, discount_factors):
     '''Interpolate discount factor with Log Linear
-    
+
     Arguments:
-       t : array_like  
+       t : array_like
            Points to evaluate the interpolant discount factor.
        grids : array_like
            Time grids that fixed discount factors are given.
        discount_factors : array_like
            Discount factors given fixed.
-    
+
     Return:
         y : array_like
         Interpolated discount factors.
@@ -21,8 +21,8 @@ def log_linear(t, grids, discount_factors):
         grids = np.append([0], grids)
         discount_factors = np.append([1], discount_factors)
 
-    f = interpolate.interp1d(grids, 
-                             np.log(discount_factors), 
+    f = interpolate.interp1d(grids,
+                             np.log(discount_factors),
                              kind = 'linear',
                              fill_value = 'extrapolate')
     return np.exp(f(t))
@@ -31,8 +31,8 @@ def log_quadratic(t, grids, discount_factors):
     if not(np.isclose(grids[0], 0)):
         grids = np.append([0], grids)
         discount_factors = np.append(1, discount_factors)
-    f = interpolate.interp1d(grids, 
-                             np.log(discount_factors), 
+    f = interpolate.interp1d(grids,
+                             np.log(discount_factors),
                              kind = 'quadratic')
     return np.exp(f(t))
 
@@ -41,23 +41,23 @@ def log_cubic(t, grids, discount_factors):
         grids = np.append([0], grids)
         discount_factors = np.append(1, discount_factors)
 
-    f = interpolate.interp1d(grids, 
-                             np.log(discount_factors), 
+    f = interpolate.interp1d(grids,
+                             np.log(discount_factors),
                              kind = 'cubic')
     return np.exp(f(t))
 
 
 def monotone_convex(t, grids, discount_factors):
     '''Interpolate discount factor with Monotone Convex by Hagan and West(2006)
-    
+
     Arguments:
-       t : array_like  
+       t : array_like
            Points to evaluate the interpolant discount factor.
        grids : array_like
            Time grids that fixed discount factors are given.
        discount_factors : array_like
            Discount factors given fixed.
-    
+
     Return:
         y : array_like
         Interpolated discount factors.
@@ -67,7 +67,7 @@ def monotone_convex(t, grids, discount_factors):
     if not(np.isclose(grids[0], 0)):
         grids = np.append([0], grids)
         discount_factors = np.append(1, discount_factors)
-    
+
     f_discrete = -(np.log(discount_factors[1:] / discount_factors[:-1])
                   / (grids[1:] - grids[:-1]))
     f = ((grids[1:-1] -  grids[:-2]) * f_discrete[1:]
@@ -82,9 +82,9 @@ def monotone_convex(t, grids, discount_factors):
 
     f = f.reshape(1, -1)
     f_discrete = f_discrete.reshape(1, -1)
-    
-    indice = np.min(np.where(t.reshape(-1, 1) < grids.reshape(1, -1), 
-                             np.arange(len(grids)), 
+
+    indice = np.min(np.where(t.reshape(-1, 1) < grids.reshape(1, -1),
+                             np.arange(len(grids)),
                              np.inf),
                     axis = 1)
     indice = np.array(indice, dtype = 'int16')
@@ -112,11 +112,11 @@ def monotone_convex(t, grids, discount_factors):
         # region(iv)
         eta = g1 / (g0 + g1)
         A = -g0 * g1 / (g0 + g1)
-        Giv = A * x + np.where(x < eta, 
-                               1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2), 
+        Giv = A * x + np.where(x < eta,
+                               1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2),
                                1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
         Giv = np.where(np.isnan(Giv), 0, Giv)
-        G = [Gi, Gii, Giii, Giv]        
+        G = [Gi, Gii, Giii, Giv]
         return G
     g_integrated = integrate_g(x, g0, g1)
 #    print('g integrated :', g_integrated)
@@ -124,14 +124,14 @@ def monotone_convex(t, grids, discount_factors):
                  0,
                  np.where((g0 + 2 * g1) * (2 * g0 + g1) < 0,
                           g_integrated[0],
-                          np.where(g0 * (2 * g0 + g1) <= 0, 
+                          np.where(g0 * (2 * g0 + g1) <= 0,
                                    g_integrated[1],
                                    np.where(g1 * (g0 + 2 * g1) <= 0,
                                             g_integrated[2],
                                             g_integrated[3]))))
     df = discount_factors[indice - 1]
     return df * np.exp(-G - fd_i * (t - t_iminus1))
-    
+
 
 def _slow_log_linear(t, grids, discount_factors):
     if not(np.isclose(grids[0], 0)):
@@ -142,8 +142,8 @@ def _slow_log_linear(t, grids, discount_factors):
     df99 = discount_factors[-1] * np.exp(-f99 * (99 - grids[-1]))
     grids = np.append(grids, [99])
     discount_factors = np.append(discount_factors, df99)
-    
-    
+
+
     i = np.where(grids > t)[0][0]
     f = np.log(discount_factors[i - 1] / discount_factors[i]) / (grids[i] - grids[i - 1])
     return discount_factors[i - 1] * np.exp(-f * (t - grids[i - 1]))
@@ -158,7 +158,7 @@ def _test_compare_speed():
     dfs = [0.99, 0.985,0.97,0.95]
 
     ts = np.arange(0, 10, 1./365.)
-    
+
     t0 = time.time()
     df1 = np.array([_slow_log_linear(t, grids, dfs) for t in ts])
     t1 = time.time()
@@ -175,21 +175,21 @@ def _test_compare_speed():
     print('slow :', t1 - t0)
     print('broadcast :', t2 - t1)
     print('monotone convex:', t3 - t2)
-    
-    
+
+
     fwd = -np.log(df1[1:] / df1[:-1]) / (ts[1:] - ts[:-1])
-#    plt.plot(ts[:-1], fwd)    
-        
+#    plt.plot(ts[:-1], fwd)
+
 
 def _test_curve_shape():
     import matplotlib.pyplot as plt
-    
+
     print('===== Compare the shapes of curves ======')
     grids = [1,2,3,4, 5]
     dfs = [0.993, 0.98,0.97,0.95, 0.94]
 
     ts = np.arange(0, 5, 1./365.)
-    
+
     df_linear = log_linear(ts, grids, dfs)
     df_quadratic = log_quadratic(ts, grids, dfs)
     df_cubic = log_cubic(ts, grids, dfs)
@@ -209,9 +209,9 @@ def _test_curve_shape():
     plt.plot(ts[:-1], fwd_quadratic, label = 'quadratic')
     plt.plot(ts[:-1], fwd_cubic, label = 'cubic')
     plt.plot(ts[:-1], fwd_mc, label = 'monotone convex')
-    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+    plt.legend()
     plt.show()
-                
+
 def _calibrate():
     import scipy.optimize as so
     import matplotlib.pyplot as plt
@@ -219,15 +219,15 @@ def _calibrate():
 
     grids = np.array([1,2,3,4,5, 6, 7, 8, 9, 10])
     discount_factors = np.array([0.993, 0.98,0.97,0.95, 0.94, 0.93, 0.92, 0.91,0.9, 0.89])
-    
+
     end_dates = np.array([1,2,3,4,5, 6, 7, 8, 9, 10])
     swap_rates = [0.01, 0.012, 0.015, 0.015, 0.017, 0.018, 0.018, 0.019, 0.019, 0.02]
 
     t0 = time.time()
-    interp = log_linear
+    interp = monotone_convex
     loss = lambda dfs: np.sum(np.power(-np.log(interp(end_dates, grids, dfs)) / end_dates- swap_rates, 2))
     print('before calib :', loss(discount_factors))
-    param = so.minimize(loss, 
+    param = so.minimize(loss,
                         discount_factors,
                         tol = 1e-6)
     t1 = time.time()
@@ -237,7 +237,7 @@ def _calibrate():
     ts = np.arange(0, 10, 1/365)
     df_calib = interp(ts, grids, param.x)
     print('calib :', -np.log(interp(end_dates, grids, param.x)) / end_dates)
-    
+
     fwd_calib = -np.log(df_calib[1:] / df_calib[:-1]) / (ts[1:] - ts[:-1])
     plt.plot(ts, df_calib, label = 'monotone convex')
     plt.legend()
@@ -245,7 +245,7 @@ def _calibrate():
     plt.plot(ts[:-1], fwd_calib, label = 'monotone convex')
     plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
-    
+
 if __name__ == '__main__':
 #    t = 1.1
 #    grids = [1,2,3,4]
@@ -253,6 +253,6 @@ if __name__ == '__main__':
 #    print(monotone_convex(t, grids, dfs))
 #    print(interpolate.interp1d(grids, dfs, kind = 'zero')(t))
 
-#    _test_curve_shape()
-#    _test_compare_speed()
-    _calibrate()
+    _test_curve_shape()
+    #_test_compare_speed()
+    #_calibrate()

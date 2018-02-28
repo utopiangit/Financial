@@ -10,7 +10,7 @@ def black_call(fwd, strike, volatility, tau):
     '''
     return fwd * ss.norm.cdf(_d1(fwd, strike, volatility, tau)) \
         - strike * ss.norm.cdf(_d2(fwd, strike, volatility, tau))
-              
+
 def black_put(fwd, strike, volatility, tau):
     '''
     Calculate Put Option Price Under Black Model
@@ -43,21 +43,21 @@ def strike_by_delta(fwd, delta, volatility, tau):
 def implied_black_volatilities(v, fwd, strike, tau, initial = 0.5):
     '''
     Calculate Implied Black Volatilities
-    
+
     Arguments:
         v must be numpy.ndarray
     '''
     return scipy.optimize.fsolve(
             lambda x : black_call(fwd, strike, x, tau) - v,
             initial * np.ones(v.size))
-    
+
 def _d1(fwd, strike, volatility, tau):
     return (np.log(fwd/strike) +  volatility**2 / 2 * tau)/(volatility * np.sqrt(tau))
- 
+
 def _d2(fwd, strike, volatility, tau):
     return (np.log(fwd / strike)  - volatility**2 / 2 * tau) / (volatility * np.sqrt(tau))
- 
-    
+
+
 # Normal
 def normal_call(fwd, strike, volatility, tau):
     '''
@@ -71,7 +71,7 @@ def normal_put(fwd, strike, volatility, tau):
     Calculate Put Option Price Under Normal Model
     '''
     return fwd - strike - normal_call(fwd, strike, volatility, tau)
-   
+
 def implied_normal_volatilities(v, fwd, strike, tau, initial = 0.002):
     return scipy.optimize.fsolve(
             lambda x : normal_call(fwd,strike,x,tau) - v,
@@ -87,7 +87,7 @@ def shifted_black_call(fwd, strike, volatility, tau, shift):
     Calculate Call Option Price Under Shifted Log Normal Model
     '''
     return black_call(fwd + shift, strike + shift, volatility, tau)
-    
+
 def implied_shifted_volatilities(v, fwd, strike, tau, shift, initial = 0.1):
     return scipy.optimize.fsolve(
             lambda x : shifted_black_call(fwd, strike, x, tau, shift) - v,
@@ -105,14 +105,13 @@ if __name__ == '__main__':
     deltastrike = strike_by_delta(fwd, delta, vol, tau)
     print('Strike :', deltastrike)
     print('Delta :',black_delta(fwd, deltastrike, vol, tau))
-    
+
     print(implied_black_volatility(v, fwd, strike, tau))
-    
+
     df = 1
-    dv = 0.01    
-    vanna = (black_call(fwd + df, strike, vol + dv, tau) 
-             - black_call(fwd - df, strike, vol + dv, tau) 
-             - black_call(fwd + df, strike, vol - dv, tau) 
+    dv = 0.01
+    vanna = (black_call(fwd + df, strike, vol + dv, tau)
+             - black_call(fwd - df, strike, vol + dv, tau)
+             - black_call(fwd + df, strike, vol - dv, tau)
              + black_call(fwd - df, strike, vol - dv, tau)) / (4 * df * dv)
     print('vanna :', vanna)
-    

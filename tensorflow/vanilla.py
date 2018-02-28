@@ -4,11 +4,11 @@ import numpy as np
 
 def bs_mc(underlying, strike, volatility, tau, n_path = 1000, n_div = 100):
 #    path = tf.random_normal([n_path, n_div]) * volatility * tf.sqrt(tau / n_div)
-    path = np.random.randn(n_path, n_div)    
+    path = np.random.randn(n_path, n_div)
     path = path * volatility * tf.sqrt(tau / n_div)
     drift = (-volatility**2 / 2.) * tau
     ST = tf.exp(tf.reduce_sum(path, axis = 1) + drift) * underlying
-    payoff = tf.maximum(ST - strike, 0)    
+    payoff = tf.maximum(ST - strike, 0)
     return tf.reduce_mean(payoff)
 
 def black_call(fwd, strike, volatility, tau):
@@ -16,15 +16,15 @@ def black_call(fwd, strike, volatility, tau):
     Calculate Call Option Price Under Black Model
     '''
     dist = tf.distributions.Normal(loc=0., scale=1.)
-    return (fwd * dist.cdf(_d1(fwd, strike, volatility, tau)) 
+    return (fwd * dist.cdf(_d1(fwd, strike, volatility, tau))
             - strike * dist.cdf(_d2(fwd, strike, volatility, tau)))
-    
+
 def _d1(fwd, strike, volatility, tau):
     return (tf.log(fwd/strike) +  volatility**2 / 2 * tau)/(volatility * tf.sqrt(tau))
- 
+
 def _d2(fwd, strike, volatility, tau):
     return (tf.log(fwd / strike)  - volatility**2 / 2 * tau) / (volatility * tf.sqrt(tau))
-    
+
 def black_delta(fwd, strike, volatility, tau):
     '''
     Calculate Call Option Delta Under Black Model
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 #    vanna = tf.gradients(vega, S)[0]
 
     # 解析式なら二回微分まで問題なく計算できる
-    v_a = black_call(S, K, volatility, tau)    
+    v_a = black_call(S, K, volatility, tau)
     delta_a = tf.gradients(v_a, S)[0]
     vega_a = tf.gradients(v_a, volatility)[0]
     gamma_a = tf.gradients(delta_a, S)[0]
@@ -70,4 +70,3 @@ if __name__ == '__main__':
         print('gamma_a :', sess.run(gamma_a))
         print('vanna_a :', sess.run(vanna_a))
         print('theta_a :', sess.run(theta_a))
-
