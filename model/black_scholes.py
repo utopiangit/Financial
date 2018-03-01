@@ -11,11 +11,17 @@ def black_call(fwd, strike, volatility, tau):
     return fwd * ss.norm.cdf(_d1(fwd, strike, volatility, tau)) \
         - strike * ss.norm.cdf(_d2(fwd, strike, volatility, tau))
 
+def _d1(fwd, strike, volatility, tau):
+    return (np.log(fwd/strike) +  volatility**2 / 2 * tau)/(volatility * np.sqrt(tau))
+
+def _d2(fwd, strike, volatility, tau):
+    return (np.log(fwd / strike)  - volatility**2 / 2 * tau) / (volatility * np.sqrt(tau))
+
 def black_put(fwd, strike, volatility, tau):
     '''
     Calculate Put Option Price Under Black Model
     '''
-    return fwd - strike - black_call(fwd, strike, volatility, tau)
+    return -fwd + strike + black_call(fwd, strike, volatility, tau)
 
 def implied_black_volatility(v, fwd, strike, tau, initial = 0.5):
     '''
@@ -51,11 +57,6 @@ def implied_black_volatilities(v, fwd, strike, tau, initial = 0.5):
             lambda x : black_call(fwd, strike, x, tau) - v,
             initial * np.ones(v.size))
 
-def _d1(fwd, strike, volatility, tau):
-    return (np.log(fwd/strike) +  volatility**2 / 2 * tau)/(volatility * np.sqrt(tau))
-
-def _d2(fwd, strike, volatility, tau):
-    return (np.log(fwd / strike)  - volatility**2 / 2 * tau) / (volatility * np.sqrt(tau))
 
 
 # Normal
