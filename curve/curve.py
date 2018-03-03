@@ -234,7 +234,7 @@ def _test_turn():
 
 
 if __name__ == '__main__':
-#    _test_build_curve()
+    _test_build_curve()
 #    _vectorized_calib()
 #    _test_basis()
-    _test_turn()
+    #_test_turn()
