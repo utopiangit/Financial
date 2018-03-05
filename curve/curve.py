@@ -22,7 +22,7 @@ class Curve(object):
                                                     self._grid_terms,
                                                     self._discount_factors)
 
-    def _update(self, discount_factors):
+    def update(self, discount_factors):
         self._discount_factors = discount_factors
         return self
 
@@ -61,13 +61,13 @@ class TurnCurve(Curve):
 def build_curve(curve, instruments, market_rates):
     def loss(dfs):
         par_rates = np.array(
-            [ins.par_rate(curve._update(dfs)) for ins in instruments]).flatten()
+            [ins.par_rate(curve.update(dfs)) for ins in instruments]).flatten()
         return np.sum(np.power((par_rates - market_rates), 2))
     opt = so.minimize(loss,
                       curve._discount_factors,
                       method = 'Nelder-Mead',
                       tol = 1e-6)
-    curve._update(opt.x)
+    curve.update(opt.x)
     return curve
 
 def _test_build_curve():
@@ -131,7 +131,7 @@ def _vectorized_calib():
     grids = np.array(end_dates)
     dfs = np.exp(-np.array(swap_rates) * grids)
     mc = Curve(grids, dfs, interpolation_method = 'monotone_convex')
-    loss = lambda x: np.sum(np.power(insts.par_rate(mc._update(x)) - swap_rates, 2))
+    loss = lambda x: np.sum(np.power(insts.par_rate(mc.update(x)) - swap_rates, 2))
 #    print('before :', loss(dfs))
     t0 = time.time()
     param = so.minimize(loss,
@@ -141,7 +141,7 @@ def _vectorized_calib():
 #    print('after:', loss(param.x))
     print('vectorized :', t1 - t0, 's')
 
-    mc._update(param.x)
+    mc.update(param.x)
     print(insts.par_rate(mc))
 #    print(param)
 
