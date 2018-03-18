@@ -42,6 +42,7 @@ class CurveManager(object):
             num_grids = content[1]
             curve.update(values[counter:counter + num_grids])
             counter = counter + num_grids
+        return self
 
 
 def _test2():

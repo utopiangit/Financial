@@ -62,13 +62,13 @@ class ZeroRate(Instrument):
         df_end = curve.get_df(self._end)
         return -np.log(df_end / df_start) / (self._end - self._start)
 
-
 def __test_curveman():
     import curve
     import curveman
     import numpy as np
     import scipy.optimize as so
     import matplotlib.pyplot as plt
+    import time
 
     # Define instruments which we calibrate curves to
     grids_fixed_ois = [7/365, 1/12, 2/12, 3/12, 6/12, 9/12, 1]
@@ -79,20 +79,20 @@ def __test_curveman():
     cm = curveman.CurveManager()
 
     # Define curves and register them to CurveManager
-    grids_ois = [7/365, 0.2, 0.4, 0.6, 1]
+    grids_ois = [7/365, 1/12, 0.4, 0.6, 1]
     dfs_ois = np.ones((len(grids_ois), ))
     ois_base = curve.Curve(grids_ois, dfs_ois, 'log_linear')
     cm.append_curve('JPY-OIS-BASE', ois_base)
 
-    turn1_from = 0.25
-    turn1_to = 0.26
-    turn1_size = 0.01
+    turn1_from = 0.2
+    turn1_to = 0.21
+    turn1_size = 0.0
     turn1 = curve.TurnCurve(turn1_from, turn1_to, turn1_size)
     cm.append_curve('JPY-Turn1', turn1)
 
-    turn2_from = 0.75
-    turn2_to = 0.76
-    turn2_size = 0.02
+    turn2_from = 0.7
+    turn2_to = 0.71
+    turn2_size = 0.0
     turn2 = curve.TurnCurve(turn2_from, turn2_to, turn2_size)
     cm.append_curve('JPY-Turn2', turn2)
 
@@ -109,11 +109,17 @@ def __test_curveman():
     initial = np.ones((len(grids_fixed_ois), ))
     print('initial loss :', loss(initial))
 
+    t0 = time.time()
     param = so.minimize(loss,
                         initial,
-                        tol = 1e-6)
+                        tol = 1e-8,
+                        method = 'nelder-mead')
+    t1 = time.time()
+    print('time :', t1 - t0)
     print('after calib :', loss(param.x))
-    print('df :', param.x)
+    print('params :', param.x)
+    mids = np.array([ois.par_rate(cm) for ois in fixed_ois])
+    print('calibrated ois :', mids)
 
     cm.update_curves(param.x)
     ts = np.arange(0, 1, 1/365)
@@ -123,6 +129,8 @@ def __test_curveman():
     plt.plot(ts[:-1], fwd, label = 'turned')
     plt.legend()
     plt.show()
+
+    print(param.jac)
 
 if __name__ == '__main__':
     __test_curveman()
