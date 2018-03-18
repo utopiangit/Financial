@@ -26,6 +26,9 @@ class Curve(object):
         self._discount_factors = discount_factors
         return self
 
+    def get_degree_of_freedom(self):
+        return len(self._grid_terms)
+
 class BasisCurve(Curve):
     def __init__(self,
                  base_curve,
@@ -47,16 +50,24 @@ class TurnCurve(Curve):
          self._turn_from = turn_from
          self._turn_to = turn_to
          self._turn_size = turn_size
+         
 
     def get_df(self, t):
         df_turn_from = 1
         df_turn_to = np.exp(
             -self._turn_size * (self._turn_to - self._turn_from))
         df_inf = df_turn_to
-        return interpolation.log_linear(t,
-                                        np.array([self._turn_from, self._turn_to, 99]),
-                                        np.array([df_turn_from, df_turn_to, df_inf]))
+        return interpolation.log_linear(
+                t,
+                np.array([self._turn_from, self._turn_to, 99]),
+                np.array([df_turn_from, df_turn_to, df_inf])
+            )
 
+    def update(self, turn_size):
+        self._turn_size = turn_size
+
+    def get_degree_of_freedom(self):
+        return 1
 
 def build_curve(curve, instruments, market_rates):
     def loss(dfs):
@@ -234,7 +245,7 @@ def _test_turn():
 
 
 if __name__ == '__main__':
-    _test_build_curve()
+    #_test_build_curve()
 #    _vectorized_calib()
 #    _test_basis()
-    #_test_turn()
+    _test_turn()
