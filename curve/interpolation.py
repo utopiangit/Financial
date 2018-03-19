@@ -76,9 +76,9 @@ def monotone_convex(t, grids, discount_factors):
     fn = (3. * f_discrete[-1] - f[-1]) / 2.
     f = np.append([f0], f)
     f = np.append(f, [fn])
-#    print('grids :', grids)
-#    print('f_discrete :', f_discrete)
-#    print('f :', f)
+    print('grids :', grids)
+    print('f_discrete :', f_discrete)
+    print('f :', f)
 
     f = f.reshape(1, -1)
     f_discrete = f_discrete.reshape(1, -1)
@@ -98,28 +98,39 @@ def monotone_convex(t, grids, discount_factors):
     t_i = grids[indice]
 
     x = (t - t_iminus1) / (t_i - t_iminus1)
+    L = t_i - t_iminus1
     def integrate_g(x, g0, g1):
         # region(i)
         Gi = g0 * (x - 2. * x**2  + x**3) + g1 * (-x**2 + x**3)
         # region(ii)
         eta = 1 + 3. * g0 / (g1 - g0)
-        Gii = g0 * x + np.where(x < eta, 0, (g1 - g0) * (x - eta)**3 / (1 - eta)**2 / 3.)
+        Gii = g0 * x + np.where(x < eta, 0, (g1 - g0) * (x - eta)**3 / (3 * (1 - eta)**2))
         Gii = np.where(np.isnan(Gii), 0, Gii)
         # region(iii)
         eta = 3. * g1 / (g1 - g0)
-        Giii = g1 * x + (g0 - g1) / 3. * (eta - np.where(x < eta, (eta - x)**3 / eta**2,  0))
+        #Giii = g1 * x + (g0 - g1) / 3. * (eta - np.where(x < eta, (eta - x)**3 / eta**2,  0))
+        #Giiia = g1 * x + (g0 - g1) * ((eta - x)**3 - eta**3) / (3 * eta**2)
+        #Giiib = g1 * (x - 1) 
+        Giiia = L * (g1 - x - (g0 - g1) * ((eta - x)**3 / (3 * eta**2) - eta))
+        Giiib = L * ((2 * g1 + g0) / 3 * eta + g1 * (x- eta))
+        Giii = np.where(x < eta, Giiia, Giiib)
         Giii = np.where(np.isnan(Giii), 0, Giii)
         # region(iv)
         eta = g1 / (g0 + g1)
         A = -g0 * g1 / (g0 + g1)
-        Giv = A * x + np.where(x < eta,
-                               1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2),
-                               1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
+        #Giv = A * x + np.where(x < eta,
+        #                       1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2),
+        #                       1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
+        #Giva = A * x + (g0 - A) * ((x - eta)**3 + eta**3) / (3 * eta**2)
+        #Givb = -A + A * x - (g1 - A) * ((1 - eta)**3 - (x - eta)**3) / (3 * (1 - eta)**2)
+        Giva = L * (A * x - (g0 - A) * ((eta - x)**3 / (3 * eta**2) - eta))
+        Givb = L * ((2 * A + g0) / 3 * eta + (A * (x - eta) + (g1 - A) / 3 * (x - eta)**3 / (1 - eta)**2))
+        Giv = np.where(x < eta, Giva, Givb)
         Giv = np.where(np.isnan(Giv), 0, Giv)
         G = [Gi, Gii, Giii, Giv]
         return G
     g_integrated = integrate_g(x, g0, g1)
-#    print('g integrated :', g_integrated)
+    #print('g integrated :', g_integrated)
     G = np.where(np.logical_or(np.isclose(x, 0), np.isclose(x, 1)),
                  0,
                  np.where((g0 + 2 * g1) * (2 * g0 + g1) < 0,
@@ -129,6 +140,8 @@ def monotone_convex(t, grids, discount_factors):
                                    np.where(g1 * (g0 + 2 * g1) <= 0,
                                             g_integrated[2],
                                             g_integrated[3]))))
+    #print('G adapted :', G)
+                                            
     df = discount_factors[indice - 1]
     return df * np.exp(-G - fd_i * (t - t_iminus1))
 
@@ -185,10 +198,10 @@ def _test_curve_shape():
     import matplotlib.pyplot as plt
 
     print('===== Compare the shapes of curves ======')
-    grids = [1,2,3,4, 5]
-    dfs = [0.993, 0.98,0.97,0.95, 0.94]
+    grids = [1,2,3]
+    dfs = [0.99, 0.985, 0.97]
 
-    ts = np.arange(0, 5, 1./365.)
+    ts = np.arange(1.67, 1.68, 1./365.)
 
     df_linear = log_linear(ts, grids, dfs)
     df_quadratic = log_quadratic(ts, grids, dfs)
@@ -211,6 +224,10 @@ def _test_curve_shape():
     plt.plot(ts[:-1], fwd_mc, label = 'monotone convex')
     plt.legend()
     plt.show()
+
+    for t, fwd in zip(ts[:-1], fwd_mc):
+        print(t, fwd)
+
 
 def _calibrate():
     import scipy.optimize as so
