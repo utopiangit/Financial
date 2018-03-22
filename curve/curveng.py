@@ -42,7 +42,7 @@ def __test():
     start_fra = [0, 3/12, 6/12]
     end_fra = [6/12, 9/12, 1]
     fra = [inst.SimpleRate(start, end, 'JPY-LIBOR') for start, end in zip(start_fra ,end_fra)]
-    fra_rates = [0.004, 0.007, 0.007]
+    fra_rates = [0.004, 0.007, 0.01]
 
     # Create CurveManager
     cm = curveman.CurveManager()
@@ -70,7 +70,7 @@ def __test():
 
     grids_lo = end_fra
     dfs_lo = np.ones((len(grids_lo), ))
-    lo = curve.Curve(grids_lo, dfs_lo, 'log_cubic')
+    lo = curve.Curve(grids_lo, dfs_lo, 'monotone_convex')
     cm.append_curve('JPY-LO', lo)
 
     cm.register_basis_curve('JPY-LIBOR',
@@ -109,7 +109,7 @@ def __test_mc():
     import matplotlib.pyplot as plt
     import interpolation as interp
     result = [0.99998082, 0.99991667, 0.9992836,  0.99868419, 0.99668883, 0.00833426, 
-              0.00999793, 0.99910238, 0.99809089, 0.99801006]
+              0.00999793, 0.99910109, 0.9979804, 0.99800533]
     dfs = result[-3:]
     grids = [6/12, 9/12, 1]
     #curve = curve.Curve(grids, dfs, 'monotone_convex')
@@ -127,5 +127,5 @@ def __test_mc():
 
 if __name__ == '__main__':
     print('curveng')
-    #__test()
-    __test_mc()
+    __test()
+    #__test_mc()

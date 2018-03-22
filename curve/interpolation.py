@@ -76,9 +76,9 @@ def monotone_convex(t, grids, discount_factors):
     fn = (3. * f_discrete[-1] - f[-1]) / 2.
     f = np.append([f0], f)
     f = np.append(f, [fn])
-    print('grids :', grids)
-    print('f_discrete :', f_discrete)
-    print('f :', f)
+    #print('grids :', grids)
+    #print('f_discrete :', f_discrete)
+    #print('f :', f)
 
     f = f.reshape(1, -1)
     f_discrete = f_discrete.reshape(1, -1)
@@ -98,7 +98,7 @@ def monotone_convex(t, grids, discount_factors):
     t_i = grids[indice]
 
     x = (t - t_iminus1) / (t_i - t_iminus1)
-    L = t_i - t_iminus1
+    #L = t_i - t_iminus1
     def integrate_g(x, g0, g1):
         # region(i)
         Gi = g0 * (x - 2. * x**2  + x**3) + g1 * (-x**2 + x**3)
@@ -109,10 +109,8 @@ def monotone_convex(t, grids, discount_factors):
         # region(iii)
         eta = 3. * g1 / (g1 - g0)
         #Giii = g1 * x + (g0 - g1) / 3. * (eta - np.where(x < eta, (eta - x)**3 / eta**2,  0))
-        #Giiia = g1 * x + (g0 - g1) * ((eta - x)**3 - eta**3) / (3 * eta**2)
-        #Giiib = g1 * (x - 1) 
-        Giiia = L * (g1 - x - (g0 - g1) * ((eta - x)**3 / (3 * eta**2) - eta))
-        Giiib = L * ((2 * g1 + g0) / 3 * eta + g1 * (x- eta))
+        Giiia = g1 * x + (g0 - g1) * ((x - eta)**3 + eta**3) / (3 * eta**2)
+        Giiib = g1 * (x - 1) 
         Giii = np.where(x < eta, Giiia, Giiib)
         Giii = np.where(np.isnan(Giii), 0, Giii)
         # region(iv)
@@ -121,10 +119,11 @@ def monotone_convex(t, grids, discount_factors):
         #Giv = A * x + np.where(x < eta,
         #                       1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2),
         #                       1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
-        #Giva = A * x + (g0 - A) * ((x - eta)**3 + eta**3) / (3 * eta**2)
+        Giva = A * x + (g0 - A) * ((x - eta)**3 + eta**3) / (3 * eta**2)
         #Givb = -A + A * x - (g1 - A) * ((1 - eta)**3 - (x - eta)**3) / (3 * (1 - eta)**2)
-        Giva = L * (A * x - (g0 - A) * ((eta - x)**3 / (3 * eta**2) - eta))
-        Givb = L * ((2 * A + g0) / 3 * eta + (A * (x - eta) + (g1 - A) / 3 * (x - eta)**3 / (1 - eta)**2))
+        Givb = A * x + (g0 - A) * eta / 3 + (g1 - A) * (x - eta)**3 / (3 * (1 - eta)**2)
+        #Giva = L * (A * x - (g0 - A) * ((eta - x)**3 / (3 * eta**2) - eta))
+        #Givb = L * ((2 * A + g0) / 3 * eta + (A * (x - eta) + (g1 - A) / 3 * (x - eta)**3 / (1 - eta)**2))
         Giv = np.where(x < eta, Giva, Givb)
         Giv = np.where(np.isnan(Giv), 0, Giv)
         G = [Gi, Gii, Giii, Giv]
@@ -143,7 +142,7 @@ def monotone_convex(t, grids, discount_factors):
     #print('G adapted :', G)
                                             
     df = discount_factors[indice - 1]
-    return df * np.exp(-G - fd_i * (t - t_iminus1))
+    return df * np.exp(-G * (t_i - t_iminus1) - fd_i * (t - t_iminus1))
 
 
 def _slow_log_linear(t, grids, discount_factors):
@@ -198,21 +197,23 @@ def _test_curve_shape():
     import matplotlib.pyplot as plt
 
     print('===== Compare the shapes of curves ======')
-    grids = [1,2,3]
-    dfs = [0.99, 0.985, 0.97]
+    grids = [6/12, 9/12, 1]
+    dfs = [0.99910238, 0.99809089, 0.99801006]
 
-    ts = np.arange(1.67, 1.68, 1./365.)
+    ts = np.arange(0.4, 0.6, 1./365.)
 
     df_linear = log_linear(ts, grids, dfs)
     df_quadratic = log_quadratic(ts, grids, dfs)
     df_cubic = log_cubic(ts, grids, dfs)
     df_mc = monotone_convex(ts, grids, dfs)
+    '''
     plt.plot(ts, df_linear, label = 'linear')
     plt.plot(ts, df_quadratic, label = 'quadratic')
     plt.plot(ts, df_cubic, label = 'cubic')
     plt.plot(ts, df_mc, label = 'monotone convex')
     plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
     plt.show()
+    '''
 
     fwd_linear = -np.log(df_linear[1:] / df_linear[:-1]) / (ts[1:] - ts[:-1])
     fwd_quadratic = -np.log(df_quadratic[1:] / df_quadratic[:-1]) / (ts[1:] - ts[:-1])
@@ -225,8 +226,8 @@ def _test_curve_shape():
     plt.legend()
     plt.show()
 
-    for t, fwd in zip(ts[:-1], fwd_mc):
-        print(t, fwd)
+    #for t, fwd in zip(ts[:-1], fwd_mc):
+    #    print(t, fwd)
 
 
 def _calibrate():
