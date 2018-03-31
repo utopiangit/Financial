@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import scipy.optimize as so
+from collections import OrderedDict
+from functools import reduce
+
 import interpolation
 
 class Curve(object):
@@ -68,6 +71,71 @@ class TurnCurve(Curve):
 
     def get_degree_of_freedom(self):
         return 1
+
+class CurveManager(object):
+    '''CurveManager
+    This class sotres some kinds of curves for multi curve framework.
+
+    '''
+    def __init__(self):
+        self._curves = OrderedDict()
+        self._basis_curves = {}
+
+    def append_curve(self, curve_name, curve):
+        self._curves[curve_name] = [
+            curve,
+            curve.get_degree_of_freedom()
+        ]
+
+    def register_basis_curve(self, curve_name, base_curve_names):
+        curves = map(self.get_curve, base_curve_names)
+        self._basis_curves[curve_name] = reduce(
+            lambda curve1, curve2 : BasisCurve(curve1, curve2),
+            curves)
+
+    def get_curve(self, curve_name):
+        if curve_name in self._curves:
+            return self._curves[curve_name][0]
+        else:
+            return self._basis_curves[curve_name]
+
+    def get_grids(self):
+        return [(curve_name, content[1]) for (curve_name, content)
+                in self._curves.items()]
+
+    def update_curves(self, values):
+        counter = 0
+        for content in self._curves.values():
+            curve = content[0]
+            num_grids = content[1]
+            curve.update(values[counter:counter + num_grids])
+            counter = counter + num_grids
+        return self
+
+class CurveEngine(object):
+    def __init__(self,
+                 curve_manager,
+                 instruments,
+                 loss_function):
+        self.__curve_manager = curve_manager
+        self.__instruments = instruments
+        self.__loss_function = loss_function
+
+    def build_curve(self, market_rates):
+        def loss(parameters):
+            cm = self.__curve_manager
+            cm.update_curves(parameters)
+            evaluated = np.array([
+                instrument.par_rate(cm) for instrument in self.__instruments])
+            return self.__loss_function(market_rates, evaluated)
+        num_freedom = np.sum([grid[1] for grid in self.__curve_manager.get_grids()])
+        param = so.minimize(loss,
+                            np.ones((num_freedom, )),
+                            tol = 1e-8,
+                            method = 'nelder-mead')
+        print('param:', param.x)
+        return self.__curve_manager.update_curves(param.x)
+
 
 def build_curve(curve, instruments, market_rates):
     def loss(dfs):
