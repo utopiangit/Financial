@@ -41,9 +41,6 @@ def monotone_convex(t, grids, discount_factors):
 #    print('f_discrete :', f_discrete)
 #    print('f :', f)
 
-    f = tf.reshape(f, [1, -1])
-    f_discrete = tf.reshape(f_discrete, [1, -1])
-
     fi = tf.gather(tf.reshape(f, [1, -1]),
                    tf.reshape(indice, [-1, 1]),
                    axis = 1)
@@ -61,38 +58,38 @@ def monotone_convex(t, grids, discount_factors):
     ti_prev = tf.gather(tf.reshape(grids, [1, -1]),
                         tf.reshape(indice - 1, [-1, 1]),
                         axis = 1)
-#    f_iminus1 = f[0, indice - 1]
-#    f_i = f[0, indice]
-#    fd_i = f_discrete[0, indice - 1]
-#    t_iminus1 = grids[indice - 1]
-#    t_i = grids[indice]
-#
+
+    t = tf.reshape(t, [-1])
+    ti = tf.reshape(ti, [-1])
+    ti_prev = tf.reshape(ti_prev, [-1])
+    g0 = tf.reshape(g0, [-1])
+    g1 = tf.reshape(g1, [-1])
+
     x = (t - ti_prev) / (ti - ti_prev)
-#    def integrate_g(x, g0, g1):
-#        # region(i)
-#        Gi = g0 * (x - 2. * x**2  + x**3) + g1 * (-x**2 + x**3)
-#        # region(ii)
-#        eta = 1 + 3. * g0 / (g1 - g0)
-#        Gii = g0 * x + tf.where(x < eta, 0, (g1 - g0) * (x - eta)**3 / (1 - eta)**2 / 3.)
-#        Gii = tf.where(tf.isnan(Gii), 0, Gii)
-#        # region(iii)
-#        eta = 3. * g1 / (g1 - g0)
-#        Giii = g1 * x + (g0 - g1) / 3. * (eta - tf.where(x < eta, (eta - x)**3 / eta**2,  0))
-#        Giii = tf.where(tf.isnan(Giii), 0, Giii)
-#        # region(iv)
-#        eta = g1 / (g0 + g1)
-#        A = -g0 * g1 / (g0 + g1)
-#        Giv = A * x + tf.where(x < eta,
-#                               1. / 3. * (g0 - A) * (eta - (eta - x)**3 / eta**2),
-#                               1. / 3. * (g0 - A) * eta + 1. / 3. * (g1 - A) * (x - eta)**3 / (1 - eta)**2)
-#        Giv = tf.where(tf.isnan(Giv), 0, Giv)
-#        G = [Gi, Gii, Giii, Giv]
-#        return G
+    def integrate_g(x, g0, g1):
+        # region(i)
+        Gi = g0 * (x - 2. * x**2  + x**3) + g1 * (-x**2 + x**3)
+        # region(ii)
+        eta = 1 + 3. * g0 / (g1 - g0)
+        Gii = g0 * x + tf.where(x < eta, tf.zeros(eta.shape), (g1 - g0) * (x - eta)**3 / (1 - eta)**2 / 3.)
+        # region(iii)
+        eta = 3. * g1 / (g1 - g0)
+        Giiia = g1 * x + (g0 - g1) * ((x - eta)**3 + eta**3) / (3 * eta**2)
+        Giiib = g1 * (x - 1) 
+        Giii = tf.where(x < eta, Giiia, Giiib)
+        # region(iv)
+        eta = g1 / (g0 + g1)
+        A = -g0 * g1 / (g0 + g1)
+        Giva = A * x + (g0 - A) * ((x - eta)**3 + eta**3) / (3 * eta**2)
+        Givb = A * x + (g0 - A) * eta / 3 + (g1 - A) * (x - eta)**3 / (3 * (1 - eta)**2)
+        Giv = tf.where(x < eta, Giva, Givb)
+        G = [Gi, Gii, Giii, Giv]
+        return G
+
     g_integrated = integrate_g(x, g0, g1)
 #    print('g integrated :', g_integrated)
-    g_cond = tf.range(5)
     G = tf.where(tf.logical_or(tf.equal(x, 0), tf.equal(x, 1)),
-                 0,
+                 tf.zeros(x.shape),
                  tf.where((g0 + 2 * g1) * (2 * g0 + g1) < 0,
                           g_integrated[0],
                           tf.where(g0 * (2 * g0 + g1) <= 0,
@@ -100,12 +97,13 @@ def monotone_convex(t, grids, discount_factors):
                                    tf.where(g1 * (g0 + 2 * g1) <= 0,
                                             g_integrated[2],
                                             g_integrated[3]))))
-#    df = discount_factors[indice - 1]
     df = tf.gather(tf.reshape(discount_factors, [1, -1]),
                    tf.reshape(indice - 1, [-1, 1]),
                    axis = 1)
+    df = tf.reshape(df, [-1])
+    fdi = tf.reshape(fdi, [-1])
+    return df * tf.exp(-G * (ti - ti_prev) - fdi * (t - ti_prev))
 
-    return df * tf.exp(-G - fdi * (t - ti_prev))
 
 def linear(t, grids, discount_factors):
     '''Interpolate discount factor with Linear Interpolation
@@ -180,20 +178,27 @@ def _test_curve_shape():
 
     ts = np.arange(0, 6, 1. / 365., dtype = np.float32)
 
-    df = log_linear(ts, grids, dfs)
+    df_ll = log_linear(ts, grids, dfs)
+    df_mc = monotone_convex(ts, grids, dfs)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        df = sess.run(df)
+        DF_ll = sess.run(df_ll)
+        DF_mc = sess.run(df_mc)
 #        print(sess.run(df))
-    # plt.plot(ts, df, label = 'log linear')
-    # plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
-    # plt.show()
+    print('DF_mc', DF_mc.shape)
+    print('ts', ts)
+    plt.plot(ts, DF_ll, label = 'log linear')
+    plt.plot(ts, DF_mc, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+    plt.show()
 
-    fwd = -np.log(df[1:] / df[:-1]) / (ts[1:] - ts[:-1])
-    print(fwd)
-    # plt.plot(ts[:-1], fwd, label = 'log linear')
-    # plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
-    # plt.show()
+    fwd_ll = -np.log(DF_ll[1:] / DF_ll[:-1]) / (ts[1:] - ts[:-1])
+    fwd_mc = -np.log(DF_mc[1:] / DF_mc[:-1]) / (ts[1:] - ts[:-1])
+    #print(fwd)
+    plt.plot(ts[:-1], fwd_ll, label = 'log linear')
+    plt.plot(ts[:-1], fwd_mc, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+    plt.show()
 
 def _test_build_curve():
     import matplotlib.pyplot as plt
@@ -217,7 +222,7 @@ def _test_build_curve():
     curve = log_linear
     rate_calc = -tf.log(curve(terms, grids, dfs)) / terms
     loss = tf.reduce_mean(tf.square(rate - rate_calc))
-    optimizer = tf.train.AdamOptimizer(0.5).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(0.1).minimize(loss)
 
     # A list of `sum(d rate_calc/d dfs)` for each df in `dfs`.
     jacobian = []
@@ -235,11 +240,11 @@ def _test_build_curve():
         print('rate calc :', sess.run(rate_calc))
         print('time :', t1 - t0)
 
-#        t2 = time.time()
-#        jacobian_value = sess.run(jacobian)
-#        t3 = time.time()
-#        print('jacobian :', jacobian_value)
-#        print('time :', t3 - t2)
+        t2 = time.time()
+        jacobian_value = sess.run(jacobian)
+        t3 = time.time()
+        print('jacobian :', jacobian_value)
+        print('time :', t3 - t2)
 
 
     ts = np.arange(0, 10, 1. / 365., dtype = np.float32)
@@ -277,5 +282,5 @@ def broadcastable_where(condition, x=None, y=None, *args, **kwargs):
         )
 
 if __name__ == '__main__':
-#    _test_curve_shape()
-    _test_build_curve()
+    _test_curve_shape()
+ #   _test_build_curve()
