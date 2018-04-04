@@ -28,7 +28,6 @@ def monotone_convex(t, grids, discount_factors):
         tf.reshape(t, [-1, 1]) - tf.reshape(shifted, [1, -1])),
         axis = 1) + 1
 
-
     f_discrete = -(tf.log(discount_factors[1:] / discount_factors[:-1])
                    / (grids[1:] - grids[:-1]))
     f = ((grids[1:-1] -  grids[:-2]) * f_discrete[1:]
@@ -149,6 +148,10 @@ def linear(t, grids, discount_factors):
     grad = tf.reshape((df - df_prev) / (ti - ti_prev), [-1])
     df_prev = tf.reshape(df_prev, [-1])
     ti_prev = tf.reshape(ti_prev, [-1])
+#    print('grad', grad.shape)
+#    print('t', t.shape)
+#    print('ti_prev', ti_prev.shape)
+#    print('df_prev', df_prev.shape)
     return grad * (t - ti_prev) + df_prev
 
 def log_linear(t, grids, discount_factors):
@@ -216,13 +219,16 @@ def _test_build_curve():
                        dtype = np.float32)
 
     grids = tf.constant([0, 1, 2, 3, 4, 5], dtype = np.float32)
-    dfs = tf.Variable([1, 0.993, 0.98,0.97,0.95, 0.94], dtype = tf.float32)
+    dfs = tf.Variable([0.993, 0.98,0.97,0.95, 0.94], dtype = tf.float32)
+    df0 = tf.constant([1], dtype = tf.float32)
+    dfs = tf.concat([df0, dfs], axis = 0)
 
     t0 = time.time()
-    curve = log_linear
+    # curve = log_linear
+    curve = monotone_convex
     rate_calc = -tf.log(curve(terms, grids, dfs)) / terms
     loss = tf.reduce_mean(tf.square(rate - rate_calc))
-    optimizer = tf.train.AdamOptimizer(0.1).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(0.5).minimize(loss)
 
     # A list of `sum(d rate_calc/d dfs)` for each df in `dfs`.
     jacobian = []
@@ -231,7 +237,7 @@ def _test_build_curve():
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(300):
+        for i in range(100):
             sess.run(optimizer)
 
         t1 = time.time()
@@ -249,7 +255,7 @@ def _test_build_curve():
 
     ts = np.arange(0, 10, 1. / 365., dtype = np.float32)
 
-    df = log_linear(ts, grids, dfs_calib)
+    df = curve(ts, grids, dfs_calib)
     t4 = time.time()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -257,15 +263,15 @@ def _test_build_curve():
 #        print(sess.run(df))
     t5 = time.time()
     print('time :', t5 - t4)
-    plt.plot(ts, df, label = 'log linear')
-    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
-    plt.show()
-
-
-#    fwd = -np.log(df[1:] / df[:-1]) / (ts[1:] - ts[:-1])
-#    plt.plot(ts[:-1], fwd, label = 'log linear')
+#    plt.plot(ts, df, label = 'log linear')
 #    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
 #    plt.show()
+
+
+    fwd = -np.log(df[1:] / df[:-1]) / (ts[1:] - ts[:-1])
+    plt.plot(ts[:-1], fwd, label = 'monotone convex')
+    plt.legend(bbox_to_anchor=(1.05, 0.5, 0.5, .100))
+    plt.show()
 
 
 def broadcastable_where(condition, x=None, y=None, *args, **kwargs):
@@ -282,5 +288,5 @@ def broadcastable_where(condition, x=None, y=None, *args, **kwargs):
         )
 
 if __name__ == '__main__':
-    _test_curve_shape()
- #   _test_build_curve()
+#    _test_curve_shape()
+    _test_build_curve()
