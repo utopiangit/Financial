@@ -40,15 +40,20 @@ if __name__ == '__main__':
     volatility = 0.0009
     r0 = 0.002
     model = Vasicek(volatility, theta, kappa)
-    curve = model.get_curve(0, r0)
+    curve1 = model.get_curve(0, r0)
+    curve2 = model.get_curve(1, r0)
+
     ts = np.arange(0, 5, 5. / 365)
-    df = curve.get_df(ts)
-    plt.plot(ts, df)
+    df1 = curve1.get_df(ts)
+    df2 = curve2.get_df(ts)
+    plt.plot(ts, df1, label = 'original')
+    plt.plot(ts, df2, label = 'shocked')
+    plt.legend()
     plt.show()
 
     t_libors = np.array([1/12, 2/12, 3/12, 6/12, 1])
-    libors = 1 / t_libors * (1 / curve.get_df(t_libors) - 1)
+    libors = 1 / t_libors * (1 / curve1.get_df(t_libors) - 1)
     t_swaps = np.array([2, 3, 5, 7, 10, 15, 30])
-    swaps = -np.log(curve.get_df(t_swaps)) / t_swaps
+    swaps = -np.log(curve1.get_df(t_swaps)) / t_swaps
     print(libors)
     print(swaps)
