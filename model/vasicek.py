@@ -9,10 +9,10 @@ class Vasicek(object):
                  mean_level: float, 
                  mean_reversion: float, 
                  t_initial: float = 0):
-        self.__volatility = volatility
-        self.__mean_level = mean_level
-        self.__mean_reversion = mean_reversion
-        self.__t_initial = t_initial
+        self.volatility = volatility
+        self.mean_level = mean_level
+        self.mean_reversion = mean_reversion
+        self.t_initial = t_initial
 
     def get_curve(self, 
                   t_observe: float, 
@@ -25,13 +25,20 @@ class Vasicek(object):
                t_observe: float, 
                t_maturity: float) -> float:
         B = self.func_b(t_observe, t_maturity)
-        return ((self.__mean_level - self.__volatility**2 / (2 * self.__mean_reversion**2)) * (B - t_maturity + t_observe)
-            - self.__volatility**2 / (4 * self.__mean_reversion) * B**2)
+        return ((self.mean_level - self.volatility**2 / (2 * self.mean_reversion**2)) * (B - t_maturity + t_observe)
+            - self.volatility**2 / (4 * self.mean_reversion) * B**2)
 
     def func_b(self,
                t_obesrve: float, 
                t_maturity: float) -> float:
-        return (1 - np.exp(-self.__mean_reversion * (t_maturity - t_obesrve))) / self.__mean_reversion
+        return (1 - np.exp(-self.mean_reversion * (t_maturity - t_obesrve))) / self.mean_reversion
+
+    def proceed(self, 
+                r,
+                timestep,
+                rnd_normal):
+        return (r + self.mean_reversion * (self.mean_level - r) * timestep 
+            + self.volatility * np.sqrt(timestep) * rnd_normal)
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
