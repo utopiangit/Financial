@@ -1,3 +1,4 @@
+module HullWhite where
 
 import Data.Array
 import Data.List
@@ -74,7 +75,7 @@ prob k l
 -- type Tree = 
 
 -- hwtree :: Tree
-hwtree = q
+hwtree = (r, q)
     where
         -- short rate on grid (i, j)
         -- i : index of time
