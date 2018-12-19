@@ -111,3 +111,13 @@ hwtree = (r, q)
 toSimpleArray :: Array (Int, Int) a -> [[a]]
 toSimpleArray grid = transpose [[grid ! (x, y) | x<-[lowx..highx]] |  y<-[lowy..highy]] 
     where ((lowx, lowy), (highx, highy)) =  bounds grid
+
+
+
+{-
+    State is assumed to be time and short rate r_t
+    But it may contain probability, Arrow Debreu ..
+-}
+data State = (Double, Double)
+data TrinomialTree = Leaf | Node State TrinomialTree TrinomialTree TrinomialTree
+prob :: TrinomialTree -> (Double, Double, Double)
