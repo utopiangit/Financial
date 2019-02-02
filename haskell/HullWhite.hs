@@ -1,4 +1,7 @@
-module HullWhite where
+module HullWhite(
+    Model, hwtree, rTree, arrowDebreuTree, depth,
+    spaceBoundsOn, rOn, arrowDebreuOn, transitionProb,
+    timeStep) where
 
 import Data.Array
 import Data.List
@@ -40,7 +43,7 @@ r0 = negate $ (log (dfs !! 1)) / time_grids !! 1 :: Double
 
 rs = zipWith (\t df -> negate $ (log df) / t) (drop 1 time_grids) (drop 1 dfs)
 
--- prob k l : transition probability from node (m, k) to (m+1,lj)
+-- prob k l : transition probability from node (m, k) to (m+1,l)
 prob :: Int -> Int -> Double
 prob k l
     | k == jmax = applyProb 0 0 pdu pdm pdd 
@@ -80,7 +83,7 @@ hwtree = (r, q)
         -- short rate on grid (i, j)
         -- i : index of time
         -- j : index of space
-        r = listArray ((0, jmin), (nt, jmax)) 
+        r = listArray ((0, jmin), (nt-1, jmax)) 
             $ map def_r [(i, j) | i <- [0..nt], j<- [jmin..jmax]]
         def_r :: (Int, Int) -> Double
         def_r (0, _) = r0
@@ -113,11 +116,39 @@ toSimpleArray grid = transpose [[grid ! (x, y) | x<-[lowx..highx]] |  y<-[lowy..
     where ((lowx, lowy), (highx, highy)) =  bounds grid
 
 
+type Tree = Array (Int, Int) Double
+type Model = (Tree, Tree)
+
+rTree :: Model -> Tree
+rTree = fst
+
+arrowDebreuTree :: Model -> Tree
+arrowDebreuTree = snd
+
+depth :: Model -> Int
+depth model = let ((_, n), _) = bounds (arrowDebreuTree model) in n
+
+spaceBoundsOn :: Int -> Model -> (Int, Int)
+spaceBoundsOn i model = (max (negate i) jmin, min i jmax)
+
+rOn :: (Int, Int) -> Model -> Double
+rOn grid model = (rTree model)!grid
+
+arrowDebreuOn :: (Int, Int) -> Model -> Double
+arrowDebreuOn grid model = (arrowDebreuTree model)!grid
+
+transitionProb :: (Int, Int) -> (Int, Int) -> Model -> Double
+transitionProb (i, j) (k, l) _ = prob j l
+
+timeStep :: Int -> Model -> Double
+timeStep _ _ = dt
+
+-- changeRootTo :: (Int, Int) -> Tree -> Tree
 
 {-
     State is assumed to be time and short rate r_t
     But it may contain probability, Arrow Debreu ..
--}
 data State = (Double, Double)
 data TrinomialTree = Leaf | Node State TrinomialTree TrinomialTree TrinomialTree
 prob :: TrinomialTree -> (Double, Double, Double)
+-}
